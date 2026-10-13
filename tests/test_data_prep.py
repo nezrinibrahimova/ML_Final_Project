@@ -16,7 +16,9 @@ def test_load_and_clean():
     cleaned = clean(df)
 
     assert len(df) == 100775
-    assert len(cleaned) in (58008, 58007)
+    assert len(cleaned) == 58007
+    assert cleaned["lat"].between(38.0, 42.0).all()
+    assert cleaned["lng"].between(44.0, 51.0).all()
     assert cleaned.isna().sum().sum() == 0
     assert "total_price" not in cleaned.columns
     assert "unit_price" not in cleaned.columns
