@@ -42,6 +42,11 @@ def clean(df):
     df["has_mortgage"] = (df["İpoteka"] == "var").astype(float)
     df = df.drop(columns=LEAKAGE_COLUMNS, errors="ignore")
     df = df.dropna(subset=["lat", "lng", "location"])
+    # Remove clearly invalid geographic coordinates
+    df = df[
+        df["lat"].between(38.0, 42.0)
+        & df["lng"].between(44.0, 51.0)
+    ]
     keep = ["price", "Kateqoriya", "location"] + NUMERIC_FEATURES
     return df[keep].reset_index(drop=True)
 
