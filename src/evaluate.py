@@ -45,7 +45,7 @@ def r2(y_true, y_pred) -> float:
     ss_res = np.sum((y_true - y_pred) ** 2)
     ss_tot = np.sum((y_true - y_true.mean()) ** 2)
     if ss_tot == 0:
-        return 0.0
+        return 1.0 if ss_res == 0 else 0.0
     return float(1.0 - ss_res / ss_tot)
 
 
