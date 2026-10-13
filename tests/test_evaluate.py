@@ -63,3 +63,10 @@ def test_compare(capsys):
     assert "Our Tree" in output
     assert "Baseline" in output
     assert "RMSE" in output
+
+def test_r2_constant_target():
+    # Eyni qiymətləri tam düzgün proqnozlaşdırır.
+    assert r2([5, 5, 5], [5, 5, 5]) == 1.0
+
+    # Həqiqi qiymətlər eynidir, amma proqnozda səhv var.
+    assert r2([5, 5, 5], [5, 6, 5]) == 0.0
