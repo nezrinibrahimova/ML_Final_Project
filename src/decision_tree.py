@@ -68,7 +68,7 @@ class DecisionTree:
         self.n_features_ = None
         self.feature_importances_ = None
 
-    # ------------------------------------------------------------------ impurity
+    #impurity
     def _impurity_from_counts(self, counts):
         """counts: (..., K) class counts -> impurity (...). Vectorised."""
         n = counts.sum(axis=-1, keepdims=True)
@@ -90,7 +90,7 @@ class DecisionTree:
         counts = np.bincount(y, minlength=len(self.classes_)).astype(float)
         return float(self._impurity_from_counts(counts))
 
-    # ------------------------------------------------------------------ split search
+    #split search
     def _best_split(self, X, y):
         """Return (feature, threshold, weighted_gain) or None.
 
@@ -141,6 +141,8 @@ class DecisionTree:
             if dI[i] > best_dI:                         # strict > : first best wins
                 best_dI = float(dI[i])
                 thr = (xs[i] + xs[i + 1]) / 2.0
+                if thr >= xs[i + 1]:        # float rounding: midpoint hit the upper value
+                    thr = xs[i]             # then "x <= thr" still separates the two groups
                 best = (j, thr, best_dI)
 
         if best is None:
@@ -148,7 +150,7 @@ class DecisionTree:
         j, thr, dI = best
         return j, thr, dI * n / self._n_total
 
-    # ------------------------------------------------------------------ grow
+    #grow
     def _leaf_value(self, y):
         if self.task == "regression":
             return float(np.mean(y))
@@ -161,7 +163,7 @@ class DecisionTree:
         node.impurity = self._impurity(y)
         node.value = self._leaf_value(y)
 
-        # ---- stopping rules ----
+        #stopping rules
         if (
             (self.max_depth is not None and depth >= self.max_depth)
             or len(y) < self.min_samples_split
@@ -178,6 +180,8 @@ class DecisionTree:
             return node
 
         mask = X[:, j] <= thr
+        if mask.all() or not mask.any():     # safety: never create an empty child
+            return node
         node.feature, node.threshold, node.gain = j, thr, w_gain
         node.left = self._grow(X[mask], y[mask], depth + 1)
         node.right = self._grow(X[~mask], y[~mask], depth + 1)
@@ -197,7 +201,7 @@ class DecisionTree:
         self._compute_importances()
         return self
 
-    # ------------------------------------------------------------------ predict
+    #predict
     def _predict_one(self, x, node: Node):
         while not node.is_leaf():
             node = node.left if x[node.feature] <= node.threshold else node.right
@@ -233,7 +237,7 @@ class DecisionTree:
             raise ValueError("predict_proba is for classification only")
         return np.vstack(self._values(X))
 
-    # ------------------------------------------------------------------ extras
+    #extras
     def _compute_importances(self):
         imp = np.zeros(self.n_features_)
 
