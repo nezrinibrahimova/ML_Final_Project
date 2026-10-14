@@ -1,4 +1,3 @@
-"""Run from repo root:  python -m pytest tests/test_tree.py -q   (or python tests/test_tree.py)"""
 import numpy as np
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from src.decision_tree import DecisionTree
@@ -61,6 +60,26 @@ def test_feature_importances():
     X = rng.normal(size=(500, 4)); y = (X[:, 2] > 0).astype(int)
     imp = DecisionTree("classification", "gini", max_depth=3).fit(X, y).feature_importances_
     assert np.isclose(imp.sum(), 1.0) and imp.argmax() == 2
+
+
+def test_adjacent_floats_do_not_create_empty_child():
+    """Regression test: midpoint of two neighbouring floats can round up to the
+    larger value, which sends every sample left and leaves an empty right child
+    (-> infinite recursion with max_depth=None, NaN leaf means)."""
+    a = np.nextafter(1.0, 2.0)      # odd mantissa -> (a+b)/2 rounds UP to b
+    b = np.nextafter(a, 2.0)
+    assert (a + b) / 2.0 >= b       # the situation we want to guard against
+    X = np.array([[a], [a], [b], [b], [5.0], [5.0]])
+    y = np.array([0.0, 0.1, 1.0, 1.1, 3.0, 3.1])
+    t = DecisionTree("regression", "mse").fit(X, y)
+
+    def check(n):
+        assert n.n_samples > 0
+        assert np.all(np.isfinite(n.value))
+        if not n.is_leaf():
+            check(n.left); check(n.right)
+    check(t.root)
+    assert np.allclose(t.predict(X), y.reshape(-1)[:len(X)], atol=0.06)
 
 
 if __name__ == "__main__":
