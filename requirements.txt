@@ -1,6 +1,8 @@
-# Pin your exact versions (run `pip freeze` once your env works).
-# These are sensible starting points — adjust as needed, then PIN them.
-numpy==1.26.4
-pandas==2.2.2
-matplotlib==3.8.4
-scikit-learn==1.4.2   # baselines / optional bonuses ONLY — not for your models
+# Pinned, tested with Python 3.11 in a fresh venv:
+#   pip install -r requirements.txt && python -m src.run_all
+numpy==2.3.4
+pandas==3.0.5
+scipy==1.16.3          # scikit-learn dependency; pinned to a numpy-2.3 compatible build
+matplotlib==3.10.9
+scikit-learn==1.9.0    # baselines / optional bonuses ONLY — not for our models
+pytest==8.4.2          # python -m pytest tests -q

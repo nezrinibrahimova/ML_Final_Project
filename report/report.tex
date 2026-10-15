@@ -120,13 +120,63 @@ Describe your impurity criteria (Gini / entropy / MSE reduction), the
 split search, recursion, leaf rule, and hyperparameters.
 
 \subsection{Support-vector machine (from scratch)}
-State the objective and the Pegasos update you implemented:
+Our \texttt{PegasosSVM} (\texttt{src/svm.py}, NumPy only) minimises the
+soft-margin primal with labels $y_i\in\{-1,+1\}$ (premium $=+1$):
 \begin{equation}
   J(\mathbf{w},b)=\tfrac{\lambda}{2}\lVert\mathbf{w}\rVert^{2}
   +\tfrac{1}{n}\sum_{i=1}^{n}\max\!\big(0,\,1-y_i(\mathbf{w}^{\top}\mathbf{x}_i+b)\big).
+  \label{eq:svm}
 \end{equation}
-Explain the learning-rate schedule, feature scaling, and your non-linear
-extension (kernelised Pegasos or random Fourier features), if any.
+At step $t$ we draw a mini-batch $A_t$ of size $k$ and let
+$A_t^{+}=\{i\in A_t: y_i(\mathbf{w}^{\top}\mathbf{x}_i+b)<1\}$ be the
+points with active hinge. The sub-gradient update is
+\begin{align}
+  \mathbf{w} &\leftarrow (1-\eta_t\lambda)\,\mathbf{w}
+     + \tfrac{\eta_t}{k}\textstyle\sum_{i\in A_t^{+}} y_i\mathbf{x}_i,\\
+  b &\leftarrow b + \tfrac{\eta_t}{k}\textstyle\sum_{i\in A_t^{+}} y_i .
+\end{align}
+The bias is not regularised, so it receives a plain sub-gradient step.
+Each epoch is one shuffled pass over the training set; every few steps
+we record $J(\mathbf{w},b)$ on the full training set to show that it
+decreases.
+
+\emph{Learning rate.} The paper's schedule
+$\eta_t=1/(\lambda t)$~\cite{pegasos} makes the first step
+$\eta_1=1/\lambda$ (e.g.\ $10^{3}$ for $\lambda=10^{-3}$). The factor
+$(1-\eta_t\lambda)$ pulls $\mathbf{w}$ back after such a step, but
+nothing pulls the unregularised bias back. On separable toy data one
+early violator moved $b$ to $\approx 370$, and it was still there after
+10 epochs. We therefore use $\eta_t=1/(\lambda(t+t_0))$ with
+$t_0=1/\lambda$, so that $\eta_1\approx1$. We also implemented
+$t_0=0$, $\eta_0/\sqrt t$ and a constant rate, and compare them in
+Fig.~\ref{fig:svm-obj}.
+
+\emph{Margin and support vectors.} After training we report
+$\lVert\mathbf{w}\rVert$, the geometric margin $2/\lVert\mathbf{w}\rVert$
+and the support vectors, i.e.\ the training points with
+$y_i(\mathbf{w}^{\top}\mathbf{x}_i+b)\le 1$ (on or inside the margin, or
+misclassified).
+
+\emph{Non-linear extension: random Fourier features.} Following
+Rahimi and Recht~\cite{rff}, we map
+$\phi(\mathbf{x})=\sqrt{2/D}\cos(W^{\top}\mathbf{x}+\mathbf{c})$ with
+$W_{jk}\sim\mathcal N(0,2\gamma)$ and $c_k\sim U[0,2\pi]$, so that
+$\phi(\mathbf{x})^{\top}\phi(\mathbf{x}')\approx
+\exp(-\gamma\lVert\mathbf{x}-\mathbf{x}'\rVert^{2})$. Linear Pegasos on
+$\phi(X)$ then approximates an RBF-kernel SVM; a unit test checks the
+kernel approximation error ($<0.05$ at $D=20{,}000$). We chose RFF over
+kernelised Pegasos because one epoch costs $O(nD)$ instead of $O(n^{2})$
+kernel evaluations. With $n\approx 4\times10^{4}$ training rows this
+difference matters, and prediction does not need the support vectors.
+
+\emph{Feature scaling.} Pegasos is not scale-invariant, so features are
+standardised with training statistics only. For the linear SVM we
+standardise every column. For the RBF models (RFF and the sklearn
+\texttt{SVC} baseline) we standardise only the numeric columns and keep
+the one-hot district/category columns as $0/1$. A standardised rare
+district dummy becomes $\approx 200$ for the few listings in that
+district, and squared distances are then dominated by district
+identity. Section~\ref{sec:svm-results} measures this effect.
 
 \section{Experimental Setup}
 Metrics (RMSE/MAE/$R^2$ for regression; precision/recall/F1/AUC for
@@ -161,6 +211,93 @@ Lead with a results table; back every claim with a number or figure.
   \label{fig:main}
 \end{figure}
 
+\subsection{SVM (Task B)}\label{sec:svm-results}
+\emph{Protocol.} We use the shared 70/15/15 split ($n_{\text{train}}=40{,}605$,
+148 features, tier threshold $=208{,}000$~AZN, the training median, giving
+a 50/50 balance). We sweep $\lambda\in\{10^{-6},\dots,10^{-1}\}$ for linear
+Pegasos (100 epochs, $k=256$). For RFF Pegasos (30 epochs, $k=64$) we sweep
+$\gamma\in\{0.01,0.03,0.1,0.3\}\times\lambda\in\{10^{-6},10^{-5},10^{-4}\}$
+at $D=1000$, then vary $D$. All choices maximise \emph{validation} F1, and
+the test set is scored once. The baselines use the same $\lambda$, with
+$C=1/(\lambda n)$ so that the objectives match: \texttt{LinearSVC}
+(hinge), \texttt{SGDClassifier} (hinge, $\alpha=\lambda$), and an RBF
+\texttt{SVC} with the chosen $\gamma$. \texttt{SVC} is fitted on a stratified
+10k-row subsample because exact kernel training is $O(n^{2})$. We also
+report 5-fold CV on the training split, with the scaler fitted inside each
+fold (an sklearn \texttt{Pipeline} for the baselines).
+
+\begin{table}[t]
+  \centering
+  \caption{Task B, SVM family on the test set. Fit time in seconds on a laptop CPU.}
+  \label{tab:svm}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{}lccccr@{}}
+    \toprule
+    Model & Prec & Rec & F1 & AUC & Fit \\
+    \midrule
+    Ours: Pegasos linear      & .907 & .903 & .905 & .964 & 7.7 \\
+    Ours: Pegasos + RFF       & \textbf{.922} & .903 & \textbf{.912} & \textbf{.974} & 14.1 \\
+    \texttt{LinearSVC}        & .906 & .906 & .906 & .964 & 4.1 \\
+    \texttt{SGDClassifier}    & .906 & .906 & .906 & .964 & 2.6 \\
+    \texttt{SVC} RBF (10k)    & .913 & \textbf{.911} & \textbf{.912} & .973 & 4.0 \\
+    \midrule
+    \multicolumn{6}{@{}l}{5-fold CV F1 (train): ours $.904\pm.005$,
+      \texttt{LinearSVC} $.905\pm.005$, SGD $.905\pm.005$} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\emph{The from-scratch solver reaches the optimum.} At the selected
+$\lambda=10^{-3}$, Pegasos ends at $J=0.2619$, which equals the objective
+of the \texttt{LinearSVC} solution. Test F1 differs by $0.001$, and the CV
+F1 difference is $0.0008$, well inside one standard deviation
+(Table~\ref{tab:svm}). Fig.~\ref{fig:svm-obj} shows $J$ decreasing. With
+the paper's schedule ($t_0=0$), $J$ first jumps above its starting value
+of 1 before recovering, while our offset schedule drops at once.
+$\eta_0/\sqrt t$ is too slow at the same budget ($J=0.291$, val F1 .889).
+
+\emph{Margin trade-off.} Increasing $\lambda$ widens the margin
+$2/\lVert\mathbf{w}\rVert$ from $0.33$ ($\lambda=10^{-6}$) to $1.69$
+($\lambda=10^{-1}$). The number of support vectors grows from $9.1$k to
+$19.8$k (22\% $\to$ 49\% of the training set). Validation F1 peaks at
+$\lambda=10^{-3}$ (margin $0.48$, F1 $.908$) and falls to $.862$ at the
+widest margin, where the model underfits.
+
+\emph{Non-linearity helps.} RFF Pegasos is the best SVM on test
+(F1 $.912$, AUC $.974$). It matches the exact RBF \texttt{SVC} and keeps
+training linear in $n$. Validation F1 rises with the number of random
+features: $.888$ at $D=250$, $.901$ at $500$, $.913$ at $1000$ and $.917$
+at $2000$. The approximation is the bottleneck at small $D$. The selected
+bandwidth is $\gamma=0.1$; a larger $\gamma=0.3$ overfits to local
+neighbourhoods (val F1 $.890$). Feature scaling matters as much as the
+kernel. With every column standardised (largest $|x|=202$, a rare district
+dummy), the same RFF model reaches only val F1 $.859$ / AUC $.933$. With
+one-hot columns kept as $0/1$ it reaches $.913$ / $.973$.
+
+\emph{What the linear SVM uses.} The weights of the standardised
+features (\texttt{svm\_top\_weights.png}) are dominated by
+\texttt{area\_m2} ($w=3.7$). The next largest weights are district
+effects: outer settlements (Masazır, Binəqədi, Binə) push toward
+\emph{standard}, central districts (Nizami, 28 May, Ağ şəhər) toward
+\emph{premium}, and new-build vs.\ house/villa category matters
+as well.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/svm_objective.png}
+  \caption{Training objective $J(\mathbf{w},b)$ of linear Pegasos
+  ($\lambda=10^{-3}$) under four learning-rate schedules.}
+  \label{fig:svm-obj}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/svm_lambda_sweep.png}
+  \caption{Linear Pegasos: validation F1/AUC (left axis) and margin
+  $2/\lVert\mathbf{w}\rVert$ (right axis, log) against $\lambda$.}
+  \label{fig:svm-lambda}
+\end{figure}
+
 \section{Discussion and Limitations}
 Where and why each model fails (luxury outliers, sparse districts,
 scaling effects), the bias--variance story, and honest limitations.
@@ -178,6 +315,10 @@ you built on. (Required.)
 S.~Shalev-Shwartz, Y.~Singer, N.~Srebro, and A.~Cotter,
 ``Pegasos: primal estimated sub-gradient solver for SVM,''
 \emph{Mathematical Programming}, vol.~127, no.~1, pp.~3--30, 2011.
+\bibitem{rff}
+A.~Rahimi and B.~Recht,
+``Random features for large-scale kernel machines,''
+in \emph{Advances in Neural Information Processing Systems}, vol.~20, 2007.
 \end{thebibliography}
 
 \end{document}

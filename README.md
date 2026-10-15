@@ -56,8 +56,28 @@ only. For the SVM you do **not** need a QP/SMO solver — use the
 
 ## Quick start
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-# put the dataset in data/ (see data/README.md), then:
-python -m src.run_all
+# download the Kaggle CSV to data/house_sale.csv (see data/README.md), then:
+python -m src.run_all              # every number + figure (deterministic, seed 42)
+python -m pytest tests -q          # unit tests (tree, SVM, metrics, data prep, bonuses)
 ```
+
+`run_all` runs these steps in order; any subset can be run by name,
+e.g. `python -m src.run_all svm`:
+
+| step       | module                          | output                                                     |
+|------------|---------------------------------|------------------------------------------------------------|
+| `eda`      | `src/eda.py`                    | price / area / location figures                            |
+| `tree`     | `src/tree_experiment.py`        | DecisionTree Task A + B, sklearn trees                     |
+| `svm`      | `src/svm_experiment.py`         | Pegasos SVM (linear + RFF) Task B, LinearSVC / SGD / SVC   |
+| `ridge`    | `src/ridge_experiment.py`       | bonus P8: NumPy Ridge vs sklearn Ridge (Task A)            |
+| `clusters` | `src/unsupervised_experiment.py`| bonus P10: PCA + k-means segments, error by segment        |
+
+Figures go to `report/figures/`, tables to `report/tables/`. The console ends
+with the headline test-set tables for Task A and Task B.
+
+Protocol shared by all experiments: one stratified 70/15/15 split (price
+quartiles, seed 42); tier threshold = train median; scaling statistics from
+train only; hyperparameters chosen on validation; test scored once.

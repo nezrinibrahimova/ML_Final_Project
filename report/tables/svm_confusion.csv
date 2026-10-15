@@ -1,0 +1,6 @@
+model,TN,FP,FN,TP
+Pegasos linear (ours),3953,401,421,3926
+Pegasos + RFF (ours),4022,332,424,3923
+sklearn LinearSVC,3947,407,408,3939
+sklearn SGDClassifier,3944,410,408,3939
+sklearn SVC rbf (n=10000),3975,379,388,3959
