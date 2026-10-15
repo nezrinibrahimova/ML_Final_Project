@@ -110,6 +110,54 @@ def main():
     tables.mkdir(parents=True, exist_ok=True)
 
     summary.to_csv(tables / "cluster_train_summary.csv")
+    # Geographic view of clusters learned from training features.
+    sample = train.sample(n=min(10000, len(train)), random_state=42)
+
+    fig, ax = plt.subplots(figsize=(10, 7))
+    for cluster in sorted(train["cluster"].unique()):
+        points = sample[sample["cluster"] == cluster]
+        ax.scatter(
+            points["lng"],
+            points["lat"],
+            s=10,
+            alpha=0.45,
+            label=f"Cluster {cluster}",
+        )
+
+    ax.set(
+        xlabel="Longitude",
+        ylabel="Latitude",
+        title="Training Clusters — Geographic Distribution",
+    )
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(figures / "cluster_geography.png", dpi=200)
+    plt.close(fig)
+
+    # Describe prices after clustering; price was not a clustering feature.
+    mean_prices = (
+        train.groupby("cluster")["price"]
+        .mean()
+        .sort_index()
+        .rename("mean_price_AZN")
+    )
+    mean_prices.to_csv(tables / "cluster_mean_prices.csv")
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    bars = ax.bar(
+        mean_prices.index.astype(str),
+        mean_prices.to_numpy(),
+    )
+    ax.bar_label(bars, fmt="%.0f", padding=3)
+    ax.set(
+        xlabel="Cluster",
+        ylabel="Mean Price (AZN)",
+        title="Mean Housing Price by Training Cluster",
+    )
+    ax.margins(y=0.15)
+    fig.tight_layout()
+    fig.savefig(figures / "cluster_mean_prices.png", dpi=200)
+    plt.close(fig)
     error_summary.to_csv(tables / "cluster_validation_errors.csv")
 
     fig, ax = plt.subplots(figsize=(8, 5))
