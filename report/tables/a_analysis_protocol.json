@@ -1,0 +1,24 @@
+{
+  "seed": 42,
+  "split": "pd.qcut(price, 4), 70/15/15",
+  "rows": [
+    40605,
+    8701,
+    8701
+  ],
+  "features": 148,
+  "tier_threshold_train": 208000.0,
+  "ridge_alpha": 0.01,
+  "tree_regression_depth": 12,
+  "tree_regression_target": "log(price)",
+  "tree_regression_selection": "validation log-RMSE",
+  "tree_classification": {
+    "criterion": "entropy",
+    "depth": 15
+  },
+  "linear_svm_lambda": 0.001,
+  "clusters": 5,
+  "pca_components": 125,
+  "cluster_analysis_split": "validation",
+  "note": "Cluster metrics are exploratory validation diagnostics on the same set used for hyperparameter selection; they are not independent test estimates. SVM analysis covers linear Pegasos, not RFF."
+}
