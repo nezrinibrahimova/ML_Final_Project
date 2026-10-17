@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import csv
 import os
+import sys
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
@@ -10,11 +11,14 @@ import matplotlib.pyplot as plt
 
 from src.decision_tree import DecisionTree
 from src import evaluate
+from src import tree_cv, tree_error_analysis, tree_vs_sklearn
+from src.tree_common import TABLES, load_splits, utf8_console
 
 SEED = 42
 FIG_DIR = "report/figures"
 DEPTHS = [1, 2, 3, 4, 6, 8, 10, 12, 15, 20]
 LEAFS = [1, 5, 10, 25, 50, 100, 200]
+
 
 
 def _try(fn, fallback, *a):
@@ -45,36 +49,16 @@ def f1(y, p):
 
 
 def get_data(synthetic: bool):
-    """Return dict with X_tr, X_val, y_tr_reg, y_val_reg, y_tr_cls, y_val_cls, names.
-    Regression target is log(price). Tier threshold comes from TRAIN only."""
-    if synthetic:
-        rng = np.random.default_rng(SEED)
-        X = rng.normal(size=(6000, 8))
-        logp = 11 + 0.8 * X[:, 0] + 0.4 * np.sin(2 * X[:, 1]) + 0.3 * X[:, 2] * X[:, 3] + rng.normal(0, .3, 6000)
-        names = [f"f{i}" for i in range(8)]
-        idx = rng.permutation(6000); tr, va = idx[:4200], idx[4200:5100]
-        X_tr, X_val, lp_tr, lp_val = X[tr], X[va], logp[tr], logp[va]
-        thr = np.median(np.exp(lp_tr))
-        return dict(X_tr=X_tr, X_val=X_val, y_tr_reg=lp_tr, y_val_reg=lp_val,
-                    y_tr_cls=(np.exp(lp_tr) > thr).astype(int),
-                    y_val_cls=(np.exp(lp_val) > thr).astype(int), names=names)
-
-    from src import data_prep
-    df = data_prep.clean(data_prep.load_raw())       
-    X, y, names = data_prep.make_features(df)
-    
-    quart = np.digitize(y, np.quantile(y, [0.25, 0.5, 0.75]))
-    X_tr, y_tr, X_val, y_val, _X_te, _y_te = data_prep.train_val_test_split(
-        X, y, stratify=quart, seed=SEED)
-    y_tr_cls, thr = data_prep.make_tier_label(y_tr)             
-    y_val_cls, _ = data_prep.make_tier_label(y_val, thr)        
-    print(f"tier threshold (train median price) = {thr:,.0f}")
-    return dict(X_tr=X_tr, X_val=X_val,
-                y_tr_reg=np.log(y_tr), y_val_reg=np.log(y_val),
-                y_tr_cls=y_tr_cls, y_val_cls=y_val_cls, names=names)
+    """Shared protocol (src/tree_common.py): same split as the SVM. Regression target
+    is log(price); the tier threshold is the TRAIN median."""
+    sp = load_splits(synthetic)
+    print(f"tier threshold (train median price) = {sp['threshold']:,.0f}")
+    return dict(X_tr=sp["X_tr"], X_val=sp["X_va"],
+                y_tr_reg=np.log(sp["p_tr"]), y_val_reg=np.log(sp["p_va"]),
+                y_tr_cls=sp["c_tr"], y_val_cls=sp["c_va"], names=sp["names"])
 
 
-
+# ----------------------------------------------------------------------------
 def sweep(make_model, param_name, values, d, task):
     """Fit one model per value; return list of (value, train_score, val_score, n_leaves)."""
     rows = []
@@ -112,16 +96,18 @@ def learning_curve(make_model, d, task, fracs=(0.05, 0.1, 0.2, 0.4, 0.7, 1.0)):
     return rows
 
 
-def main():
+def sweeps(argv=None):
+    """Problem 4a: hyperparameter study (Gini vs entropy, depth, leaf size, learning curves)."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--synthetic", action="store_true")
-    args = ap.parse_args()
+    args = ap.parse_args(argv if argv is not None else [])
     os.makedirs(FIG_DIR, exist_ok=True)
+    TABLES.mkdir(parents=True, exist_ok=True)
     d = get_data(args.synthetic)
     print(f"train={len(d['X_tr'])} val={len(d['X_val'])} features={d['X_tr'].shape[1]}")
     out = []
 
-    #Task B: gini vs entropy over depth
+    # ---- Task B: gini vs entropy over depth ----
     print("\nTask B: criterion x max_depth (F1)")
     series = []
     best_b = None
@@ -136,7 +122,7 @@ def main():
                 best_b = (r[2], crit, r[0])
     plot_curves(series, "max_depth", "F1 (premium class)", "Task B: Gini vs entropy", "tree_B_depth.png")
 
-    #Task B: extra hyperparameter, min_samples_leaf
+    # ---- Task B: extra hyperparameter, min_samples_leaf ----
     print(f"\nTask B: min_samples_leaf (criterion={best_b[1]})")
     rows = sweep(lambda v: DecisionTree("classification", best_b[1], min_samples_leaf=v, random_state=SEED),
                  "min_samples_leaf", LEAFS, d, "cls")
@@ -144,7 +130,7 @@ def main():
     plot_curves([(best_b[1], rows, ("g--", "g-"))], "min_samples_leaf (log)", "F1",
                 "Task B: min_samples_leaf", "tree_B_leaf.png", logx=True)
 
-    #Task A: depth and leaf sweeps
+    # ---- Task A: depth and leaf sweeps ----
     print("\nTask A (log price): max_depth (RMSE)")
     rows_a = sweep(lambda v: DecisionTree("regression", "mse", max_depth=v, random_state=SEED),
                    "max_depth", DEPTHS, d, "reg")
@@ -158,7 +144,7 @@ def main():
     plot_curves([("mse", rows_l, ("g--", "g-"))], "min_samples_leaf (log)", "RMSE (log price)",
                 "Task A: min_samples_leaf", "tree_A_leaf.png", logx=True)
 
-    #Learning curves (deep tree -> variance; shows gap closing with data)
+    # ---- Learning curves (deep tree -> variance; shows gap closing with data) ----
     print("\nLearning curve Task B (depth 10)")
     lc_b = learning_curve(lambda: DecisionTree("classification", best_b[1], max_depth=10, random_state=SEED), d, "cls")
     plot_curves([("depth10", lc_b, ("b--", "b-"))], "training size", "F1", "Task B learning curve", "tree_B_learning.png", logx=True)
@@ -166,16 +152,29 @@ def main():
     lc_a = learning_curve(lambda: DecisionTree("regression", "mse", max_depth=10, random_state=SEED), d, "reg")
     plot_curves([("depth10", lc_a, ("b--", "b-"))], "training size", "RMSE (log price)", "Task A learning curve", "tree_A_learning.png", logx=True)
 
-    with open(os.path.join(FIG_DIR, "tree_sweeps.csv"), "w", newline="", encoding="utf-8") as f:
+    with open(TABLES / "tree_sweeps.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f); w.writerow(["task", "criterion", "param", "value", "train", "val", "n_leaves"]); w.writerows(out)
 
-    #Final configs: VALIDATION only
+    # ---- Final configs: VALIDATION only ----
     best_a = min(rows_a, key=lambda r: r[2])
     print("\n=== Picked from validation (no test set used) ===")
     print(f"Task B: criterion={best_b[1]}, max_depth={best_b[2]}  (val F1={best_b[0]:.4f})")
     print(f"Task A: max_depth={best_a[0]}  (val RMSE log-price={best_a[2]:.4f})")
-    print(f"Figures + tree_sweeps.csv saved in {FIG_DIR}/")
+    print(f"Figures + tree_sweeps.csv saved in {FIG_DIR}/ and {TABLES}/")
+
+
+def main(argv=None):
+    """Whole tree step (what run_all calls)."""
+    utf8_console()
+    flags = ["--synthetic"] if argv and "--synthetic" in argv else []
+    steps = [("hyperparameter sweeps (4a)", sweeps),
+             ("comparison with scikit-learn (5a)", tree_vs_sklearn.main),
+             ("cross-validation and scaling", tree_cv.main),
+             ("error analysis", tree_error_analysis.main)]
+    for title, fn in steps:
+        print("\n" + "-" * 78 + f"\n[tree] {title}\n" + "-" * 78, flush=True)
+        fn(flags)
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
