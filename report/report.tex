@@ -161,9 +161,28 @@ land, latitude, longitude, and repair/deed/mortgage flags) plus one-hot
 category and district. The one-hot columns are defined on the training
 split only (unseen levels map to all-zeros), giving 148 features.
 
-\emph{Targets and split.} Prices are right-skewed (median 208,000, mean
-263,374, max 5.95M~AZN), so the regression tree is trained on
-$\log(\text{price})$ and its metrics are reported in AZN. The tier label
+\emph{Exploratory analysis} (\texttt{src/eda.py}). Prices are heavily
+right-skewed (median 208,000, mean 263,374, max 5.95M~AZN; skewness
+5.79). Taking the logarithm makes the distribution almost symmetric
+(skewness 0.27, Fig.~\ref{fig:eda}). Area is the strongest single driver
+(correlation 0.73 with price), but the building type changes the price
+level: new builds have a median of 240k~AZN at 101~m$^2$, old builds 145k
+at 65~m$^2$, and houses/villas 200k at 180~m$^2$. Location matters just as
+much. Median prices range from about 30k in remote settlements to 510k in
+Ağ şəhər and 390k in Mərdəkan, and 56 of the 138 districts have fewer
+than 50 listings. Two- and three-room flats make up 71\% of the market.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/log_price_distribution.png}
+  \caption{Distribution of $\log(1+\text{price})$ after cleaning. The raw
+  price is strongly right-skewed (skewness 5.79); the log is close to
+  symmetric (0.27).}
+  \label{fig:eda}
+\end{figure}
+
+\emph{Targets and split.} Because of this skew the regression tree is
+trained on $\log(\text{price})$, and its metrics are reported in AZN. The tier label
 is premium if the price exceeds the \emph{training} median (208,000~AZN).
 One stratified split on price quartiles (seed 42) is shared by every
 model (Table~\ref{tab:data}). A unit test asserts that the tree and SVM
@@ -280,8 +299,13 @@ identity. Section~\ref{sec:svm-results} measures this effect.
 \emph{Metrics} are implemented in NumPy (\texttt{src/evaluate.py}):
 RMSE, MAE and $R^2$ in AZN for Task~A (plus RMSE and $R^2$ on the log
 scale), and precision, recall and F1 for the premium class, plus
-rank-based ROC-AUC, for Task~B. AUC uses leaf frequencies for trees and
-signed margins for SVMs.
+rank-based (Mann--Whitney, tie-aware) ROC-AUC, for Task~B. AUC uses leaf
+frequencies for trees and signed margins for SVMs. Unit tests check
+every metric against hand-computed values, including edge cases such as a
+constant target for $R^2$. The data pipeline has its own tests: cleaned
+row count, coordinate bounds, split reproducibility, and train-only
+standardisation. In total, 49 tests cover data, metrics, tree, SVM and
+bonuses.
 
 \emph{Protocol.} Every hyperparameter is chosen on the validation split
 and the test split is scored once, for the final configurations only.
@@ -367,6 +391,26 @@ breaks the tie with a random feature permutation, while we keep the first.
 CV confirms the match (Table~\ref{tab:results}). Our tree is 7--22$\times$
 slower to fit (15.3\,s vs.\ 2.1\,s on the full training set), the price of
 Python-level recursion compared with Cython.
+
+\emph{Regression tree and learning curve.} On Task~A the tree explains
+86.5\% of the variance of $\log(\text{price})$ (test $R^2_{\log}=0.865$)
+and 70.9\% in AZN. The lower AZN value is driven by the few very expensive
+listings, whose absolute errors dominate the squared loss. The learning
+curve (Fig.~\ref{fig:tree-lc}) shows the validation error still falling
+at the full training size while the training error rises toward it: a
+variance-dominated model that would benefit from more data.
+The most important features are area (0.62), longitude (0.12) and
+latitude (0.11): location enters mainly through coordinates rather than
+through individual district dummies.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/tree_A_learning.png}
+  \caption{Task~A learning curve of our regression tree (depth 10): train
+  (dashed) and validation (solid) RMSE of $\log(\text{price})$ against the
+  number of training listings.}
+  \label{fig:tree-lc}
+\end{figure}
 
 \emph{Gini vs.\ entropy.} The entropy tree has the best F1 ($0.926$) but
 a much lower AUC ($0.930$ vs.\ $0.954$). With
@@ -527,6 +571,21 @@ a log target for prices. Next we would add a random forest of our own
 trees to cut the tree's variance, add district-level target statistics
 learned on training data only for rare districts, and model luxury
 listings separately.
+
+\section*{Team Contributions}
+\emph{Nezrin Ibrahimova (A)}: data loading and cleaning, leakage audit,
+features, the shared split and tier label (\texttt{data\_prep.py}),
+EDA (\texttt{eda.py}), all metrics (\texttt{evaluate.py}), and the
+bonuses: Ridge regression, PCA/$k$-means segmentation and the matched
+cluster error analysis.
+\emph{Sevda Gurbanova (B)}: the from-scratch decision tree
+(\texttt{decision\_tree.py}), its tests, the hyperparameter sweeps and
+learning curves, the comparison with scikit-learn, CV, and the tree
+error analysis.
+\emph{Melek Askerova (C)}: the from-scratch Pegasos SVM with random
+Fourier features (\texttt{svm.py}), its tests and experiments, the SVM
+baselines, the single \texttt{run\_all} entry point, pinned dependencies
+and packaging.
 
 \section*{Tools and Acknowledgements}
 Data: the Kaggle dataset \emph{binaaz-sale-project} by
