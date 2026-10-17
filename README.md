@@ -70,10 +70,11 @@ e.g. `python -m src.run_all svm`:
 | step       | module                          | output                                                     |
 |------------|---------------------------------|------------------------------------------------------------|
 | `eda`      | `src/eda.py`                    | price / area / location figures                            |
-| `tree`     | `src/tree_experiment.py`        | DecisionTree Task A + B, sklearn trees                     |
+| `tree`     | `src/tree_experiments.py`       | DecisionTree Task A + B: sweeps, sklearn trees, CV, errors |
 | `svm`      | `src/svm_experiment.py`         | Pegasos SVM (linear + RFF) Task B, LinearSVC / SGD / SVC   |
 | `ridge`    | `src/ridge_experiment.py`       | bonus P8: NumPy Ridge vs sklearn Ridge (Task A)            |
 | `clusters` | `src/unsupervised_experiment.py`| bonus P10: PCA + k-means segments, error by segment        |
+| `final`    | `src/final_analysis.py`         | matched Ridge vs tree (Task A), model errors by cluster    |
 
 Figures go to `report/figures/`, tables to `report/tables/`. The console ends
 with the headline test-set tables for Task A and Task B.

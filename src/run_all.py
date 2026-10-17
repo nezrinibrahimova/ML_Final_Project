@@ -32,10 +32,13 @@ TABLES = Path("report/tables")
 # (step name, module, what it produces)
 STEPS = [
     ("eda", "src.eda", "EDA figures"),
-    ("tree", "src.tree_experiment", "Decision tree: Task A + Task B, sklearn baselines"),
+    ("tree", "src.tree_experiments",
+     "Decision tree: sweeps, sklearn comparison, CV, error analysis (Task A + B)"),
     ("svm", "src.svm_experiment", "Pegasos SVM (+RFF): Task B, sklearn baselines"),
     ("ridge", "src.ridge_experiment", "Bonus P8: Ridge regression, Task A"),
     ("clusters", "src.unsupervised_experiment", "Bonus P10: PCA + k-means segments"),
+    ("final", "src.final_analysis",
+     "Matched Ridge vs tree comparison, cluster error analysis"),
 ]
 
 
