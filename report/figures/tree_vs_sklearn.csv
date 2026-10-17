@@ -1,6 +1,0 @@
-A,my tree,max_depth=12,RMSE(log)=0.24001,R2(log)=0.85069,RMSE(AZN)=126361.07811,MAE(AZN)=47496.15259,R2(AZN)=0.70521,depth=12,leaves=2196,fit_s=11.522,predict_s=0.0190
-A,sklearn,max_depth=12,RMSE(log)=0.24180,R2(log)=0.84846,RMSE(AZN)=129121.86975,MAE(AZN)=47732.98092,R2(AZN)=0.69219,depth=12,leaves=2212,fit_s=1.135,predict_s=0.0057
-B-gini,my tree,max_depth=15,precision=0.92083,recall=0.93332,F1=0.92703,ROC-AUC=0.92344,accuracy=0.92657,depth=15,leaves=1641,fit_s=20.925,predict_s=0.0301
-B-gini,sklearn,max_depth=15,precision=0.92322,recall=0.93171,F1=0.92744,ROC-AUC=0.92521,accuracy=0.92714,depth=15,leaves=1649,fit_s=1.281,predict_s=0.0062
-B-entropy,my tree,max_depth=15,precision=0.92412,recall=0.92412,F1=0.92412,ROC-AUC=0.94408,accuracy=0.92416,depth=15,leaves=1641,fit_s=22.078,predict_s=0.0260
-B-entropy,sklearn,max_depth=15,precision=0.92227,recall=0.92481,F1=0.92354,ROC-AUC=0.94236,accuracy=0.92347,depth=15,leaves=1652,fit_s=1.049,predict_s=0.0059
