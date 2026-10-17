@@ -1,0 +1,16 @@
+price,pred,pct_err,area_m2,rooms,floor,district,category
+5000000.0,1966555.4,60.7,950.0,11.0,0.0,Nəriman Nərimanov m.,Həyət evi/Bağ evi
+4100000.0,1102149.2,73.1,860.0,15.0,0.0,Şıxov q.,Həyət evi/Bağ evi
+4000000.0,1510098.8,62.2,1000.0,10.0,0.0,Mərdəkan q.,Həyət evi/Bağ evi
+2300000.0,530124.4,77.0,450.0,5.0,0.0,Badamdar q.,Həyət evi/Bağ evi
+2850000.0,1086917.8,61.9,1000.0,9.0,0.0,9-cu mikrorayon q.,Həyət evi/Bağ evi
+2550000.0,794139.4,68.9,591.0,8.0,0.0,Nardaran q.,Həyət evi/Bağ evi
+2000000.0,245891.2,87.7,205.0,6.0,0.0,İçəri Şəhər m.,Həyət evi/Bağ evi
+2500000.0,799227.3,68.0,400.0,6.0,0.0,Şüvəlan q.,Həyət evi/Bağ evi
+2400000.0,803110.4,66.5,700.0,7.0,0.0,Azadlıq Prospekti m.,Həyət evi/Bağ evi
+2000000.0,479147.6,76.0,420.0,6.0,0.0,Nardaran q.,Həyət evi/Bağ evi
+2800000.0,1388460.1,50.4,800.0,15.0,0.0,Gənclik m.,Həyət evi/Bağ evi
+1900000.0,526941.4,72.3,500.0,6.0,0.0,Nəsimi m.,Həyət evi/Bağ evi
+990000.0,2299155.9,132.2,440.0,10.0,0.0,Bilgəh q.,Həyət evi/Bağ evi
+1450000.0,245891.2,83.0,270.0,7.0,0.0,Yasamal r.,Həyət evi/Bağ evi
+1450000.0,245891.2,83.0,270.0,7.0,0.0,Yasamal r.,Həyət evi/Bağ evi
