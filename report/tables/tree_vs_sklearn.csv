@@ -1,0 +1,4 @@
+task,criterion,max_depth,min_samples_leaf,leaves_mine,leaves_sklearn,agreement_or_corr,top10_importance_overlap
+A,mse,20,10,2841,2837,0.9994914075853724,9
+B,gini,20,5,1506,1511,0.9950580393058269,10
+B,entropy,20,1,2326,2350,0.9828755315480979,9

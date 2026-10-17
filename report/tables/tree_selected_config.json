@@ -1,0 +1,22 @@
+{
+  "key": "[[40605, 148], 10703852083.0, [10, 12, 15, 20], [10, 5, 3, 1]]",
+  "config": {
+    "A": {
+      "max_depth": 20,
+      "min_samples_leaf": 10
+    },
+    "B-gini": {
+      "max_depth": 20,
+      "min_samples_leaf": 5
+    },
+    "B-entropy": {
+      "max_depth": 20,
+      "min_samples_leaf": 1
+    }
+  },
+  "validation_score": {
+    "A": 0.22344914011436515,
+    "B-gini": 0.9265653775322285,
+    "B-entropy": 0.9274295572167913
+  }
+}
